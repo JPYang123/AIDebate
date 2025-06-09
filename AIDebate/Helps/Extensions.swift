@@ -1,8 +1,9 @@
-//
-//  Extensions.swift
-//  AIDebate
-//
-//  Created by Jiping Yang on 6/7/25.
-//
+#if canImport(UIKit)
+import SwiftUI
 
-import Foundation
+extension View {
+    func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+}
+#endif

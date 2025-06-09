@@ -10,6 +10,7 @@ class DebateViewModel: ObservableObject {
     @Published var messages: [DebateMessage] = []
     @Published var isDebating = false
     @Published var isResearching = false
+    @Published var isConvertingSpeech = false
     
     // API Keys
     @Published var openAIKey = ""
@@ -257,13 +258,15 @@ class DebateViewModel: ObservableObject {
     }
     
     func speakMessage(_ message: DebateMessage) {
-        let language = detectLanguage(text: message.message)
-        ttsService.speak(text: message.message, language: language)
-    }
-    
-    private func detectLanguage(text: String) -> String {
-        let chineseRange = text.range(of: "[\u{4e00}-\u{9fff}]", options: .regularExpression)
-        return chineseRange != nil ? "zh-CN" : "en-US"
+        isConvertingSpeech = true
+        Task {
+            do {
+                try await ttsService.speak(text: message.message, apiKey: openAIKey)
+            } catch {
+                print("TTS error: \(error.localizedDescription)")
+            }
+            await MainActor.run { self.isConvertingSpeech = false }
+        }
     }
     
     func exportDebate() -> String {

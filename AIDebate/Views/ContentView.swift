@@ -10,25 +10,28 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var viewModel = DebateViewModel()
     @State private var showingSettings = false
-    @State private var showingExport = false
-    @State private var exportText = ""
+    @State private var showingDebate = false
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 20) {
-                // Header
-                VStack(spacing: 10) {
-                    Text("🤖 AI vs. AI Debate")
-                        .font(.title)
-                        .fontWeight(.bold)
-                    
-                    Text("Enter a topic and watch AI models debate in real-time")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .padding()
-                
+            ZStack {
+                  LinearGradient(colors: [.white, .blue.opacity(0.1)], startPoint: .top, endPoint: .bottom)
+                      .ignoresSafeArea()
+
+                  VStack(spacing: 20) {
+                      // Header
+                      VStack(spacing: 10) {
+                          Text("🤖 AI vs. AI Debate")
+                              .font(.title)
+                              .fontWeight(.bold)
+
+                          Text("Enter a topic and watch AI models debate in real-time")
+                              .font(.caption)
+                              .foregroundColor(.secondary)
+                              .multilineTextAlignment(.center)
+                      }
+                      .padding()
+            
                 // Topic Input
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Debate Topic")
@@ -87,41 +90,20 @@ struct ContentView: View {
                 
                 // Start Button
                 Button(action: {
-                    Task {
-                        await viewModel.startDebate()
-                    }
+                    hideKeyboard()
+                    showingDebate = true
                 }) {
-                    HStack {
-                        if viewModel.isDebating {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                            Text(viewModel.isResearching ? "Researching..." : "Debating...")
-                        } else {
-                            Text("Start Debate")
-                        }
-                    }
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(viewModel.isDebating ? Color.orange : Color.blue)
-                    .cornerRadius(10)
+                    Text("Start Debate")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue)
+                        .cornerRadius(10)
                 }
-                .disabled(viewModel.isDebating || viewModel.topic.isEmpty)
+                .disabled(viewModel.topic.isEmpty)
                 .padding(.horizontal)
-                
-                // Messages List
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 15) {
-                        ForEach(viewModel.messages) { message in
-                            MessageView(message: message) { msg in
-                                viewModel.speakMessage(msg)
-                            }
-                        }
-                    }
-                    .padding(.horizontal)
-                }
-                
+                                
                 Spacer()
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -133,19 +115,23 @@ struct ContentView: View {
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Export") {
-                        exportText = viewModel.exportDebate()
-                        showingExport = true
-                    }
-                    .disabled(viewModel.messages.isEmpty)
+                    Button("Start") {
+                         hideKeyboard()
+                         showingDebate = true
+                }
+                    .disabled(viewModel.topic.isEmpty)
                 }
             }
+            .onTapGesture {
+                hideKeyboard()
+            }
+        }
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView(viewModel: viewModel)
         }
-        .sheet(isPresented: $showingExport) {
-            ExportView(text: exportText)
+        .fullScreenCover(isPresented: $showingDebate) {
+            DebateView(viewModel: viewModel)
         }
     }
 }

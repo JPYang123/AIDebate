@@ -56,6 +56,9 @@ struct SettingsView: View {
                     }
                 }
             }
+            .onTapGesture {
+                 hideKeyboard()
+             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
