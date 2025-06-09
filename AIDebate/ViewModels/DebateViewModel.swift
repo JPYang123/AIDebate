@@ -1,6 +1,6 @@
 import Foundation
 
-// MARK: - ViewModel
+//  MARK: - ViewModel
 @MainActor
 class DebateViewModel: ObservableObject {
     @Published var topic = ""
@@ -11,18 +11,26 @@ class DebateViewModel: ObservableObject {
     @Published var isDebating = false
     @Published var isResearching = false
     @Published var isConvertingSpeech = false
-    
+
     // API Keys
     @Published var openAIKey = ""
     @Published var claudeKey = ""
     @Published var geminiKey = ""
     @Published var deepseekKey = ""
     @Published var groqKey = ""
-    
+
+    // Voice and Language Selection
+    @Published var selectedVoice: String = "nova"
+    @Published var selectedLanguage: String = "English"
+
     private let aiService: AIServiceProtocol
     private let researchService: ResearchService
     private let ttsService = TextToSpeechService()
-    
+
+    // Lists for UI Pickers
+    let availableVoices = ["alloy", "ash", "ballad", "coral", "echo", "fable", "nova", "onyx", "sage", "shimmer"]
+    let availableLanguages = ["English", "Spanish", "French", "German", "Italian", "Japanese", "Chinese", "Korean", "Portuguese"]
+
     let availableModels: [AIModel] = [
         AIModel(name: "GPT-4o", modelId: "gpt-4o", type: .openai, baseURL: "https://api.openai.com"),
         AIModel(name: "GPT-4o-mini", modelId: "gpt-4o-mini", type: .openai, baseURL: "https://api.openai.com"),
@@ -31,35 +39,39 @@ class DebateViewModel: ObservableObject {
         AIModel(name: "Deepseek-Chat", modelId: "deepseek-chat", type: .deepseek, baseURL: "https://api.deepseek.com"),
         AIModel(name: "Llama-3.3-70b-versatile (Groq)", modelId: "llama-3.3-70b-versatile", type: .groq, baseURL: "https://api.groq.com/openai")
     ]
-    
+
     var availableModelNames: [String] {
         availableModels.map { $0.name }
     }
-    
+
     init(aiService: AIServiceProtocol = AIService(), researchService: ResearchService = ResearchService()) {
         self.aiService = aiService
         self.researchService = researchService
-        loadAPIKeys()
+        loadSettings()
     }
-    
-    private func loadAPIKeys() {
-        // In a real app, you'd load these from Keychain or secure storage
-        // For demo purposes, we'll use UserDefaults (not recommended for production)
-        openAIKey = UserDefaults.standard.string(forKey: "openai_key") ?? ""
-        claudeKey = UserDefaults.standard.string(forKey: "claude_key") ?? ""
-        geminiKey = UserDefaults.standard.string(forKey: "gemini_key") ?? ""
-        deepseekKey = UserDefaults.standard.string(forKey: "deepseek_key") ?? ""
-        groqKey = UserDefaults.standard.string(forKey: "groq_key") ?? ""
+
+    private func loadSettings() {
+        let defaults = UserDefaults.standard
+        openAIKey = defaults.string(forKey: "openai_key") ?? ""
+        claudeKey = defaults.string(forKey: "claude_key") ?? ""
+        geminiKey = defaults.string(forKey: "gemini_key") ?? ""
+        deepseekKey = defaults.string(forKey: "deepseek_key") ?? ""
+        groqKey = defaults.string(forKey: "groq_key") ?? ""
+        selectedVoice = defaults.string(forKey: "selected_voice") ?? "nova"
+        selectedLanguage = defaults.string(forKey: "selected_language") ?? "English"
     }
-    
-    func saveAPIKeys() {
-        UserDefaults.standard.set(openAIKey, forKey: "openai_key")
-        UserDefaults.standard.set(claudeKey, forKey: "claude_key")
-        UserDefaults.standard.set(geminiKey, forKey: "gemini_key")
-        UserDefaults.standard.set(deepseekKey, forKey: "deepseek_key")
-        UserDefaults.standard.set(groqKey, forKey: "groq_key")
+
+    func saveSettings() {
+        let defaults = UserDefaults.standard
+        defaults.set(openAIKey, forKey: "openai_key")
+        defaults.set(claudeKey, forKey: "claude_key")
+        defaults.set(geminiKey, forKey: "gemini_key")
+        defaults.set(deepseekKey, forKey: "deepseek_key")
+        defaults.set(groqKey, forKey: "groq_key")
+        defaults.set(selectedVoice, forKey: "selected_voice")
+        defaults.set(selectedLanguage, forKey: "selected_language")
     }
-    
+
     private func getAPIKey(for model: AIModel) -> String {
         switch model.type {
         case .openai:
@@ -74,70 +86,66 @@ class DebateViewModel: ObservableObject {
             return groqKey
         }
     }
-    
+
     func startDebate() async {
         guard !topic.isEmpty else { return }
-        
+
         isDebating = true
         isResearching = true
         messages.removeAll()
-        
-        // Add research phase message
-        addMessage(speaker: nil, content: "🔍 Conducting research...", isSystem: true)
-        
+
+        addMessage(speaker: nil, content: " 🔍 Conducting research...", isSystem: true)
+
         do {
-            // Conduct research
             let research = try await researchService.conductResearch(topic: topic, apiKey: geminiKey)
-            
-            // Remove research message and add results
+
             messages.removeLast()
             addMessage(speaker: nil, content: "### Affirmative Research Briefing\n\n---\n\(research.affirmativeArguments)", isSystem: true)
             addMessage(speaker: nil, content: "### Opposition Research Briefing\n\n---\n\(research.oppositionArguments)", isSystem: true)
-            addMessage(speaker: nil, content: "✅ Research complete. The debate will now begin.", isSystem: true)
-            
+            addMessage(speaker: nil, content: " ✅ Research complete. The debate will now begin.", isSystem: true)
+
             isResearching = false
-            
-            // Start debate rounds
+
             await conductDebate(research: research)
-            
+
         } catch {
             isResearching = false
-            addMessage(speaker: nil, content: "❌ Research failed: \(error.localizedDescription)", isSystem: true)
+            addMessage(speaker: nil, content: " ❌ Research failed: \(error.localizedDescription)", isSystem: true)
         }
-        
+
         isDebating = false
-        addMessage(speaker: nil, content: "🏁 Debate finished.", isSystem: true)
+        addMessage(speaker: nil, content: " 🏁 Debate finished.", isSystem: true)
     }
-    
+
     private func conductDebate(research: ResearchBriefing) async {
         let affModel = availableModels[selectedAffirmativeModel]
         let oppModel = availableModels[selectedOppositionModel]
-        
+
         let affSystemPrompt = """
         You are a world-class debater arguing IN FAVOR of the topic: \(topic).
-        
         ## Research Briefing (Arguments FOR your stance)
         <research>
         \(research.affirmativeArguments)
         </research>
-        
-        Your opening statement should use this research. In subsequent turns, counter your opponent's arguments directly while reinforcing your own. Provide your response in Chinese.
+
+        Your opening statement should use this research.
+        In subsequent turns, counter your opponent's arguments directly while reinforcing your own. Provide your response in \(selectedLanguage).
         """
-        
+
         let oppSystemPrompt = """
         You are a world-class debater arguing AGAINST the topic: \(topic).
-        
         ## Research Briefing (Arguments AGAINST your stance)
         <research>
         \(research.oppositionArguments)
         </research>
-        
-        Your opening statement should use this research. In subsequent turns, counter your opponent's arguments directly while reinforcing your own. Provide your response in Chinese.
+
+        Your opening statement should use this research.
+        In subsequent turns, counter your opponent's arguments directly while reinforcing your own. Provide your response in \(selectedLanguage).
         """
-        
+
         var affMessages: [ChatMessage] = []
         var oppMessages: [ChatMessage] = []
-        
+
         for round in 1...numberOfRounds {
             // Affirmative turn
             await generateResponse(
@@ -149,7 +157,7 @@ class DebateViewModel: ObservableObject {
             ) { response in
                 affMessages.append(ChatMessage(role: "assistant", content: response))
             }
-            
+
             // Opposition turn
             await generateResponse(
                 model: oppModel,
@@ -162,12 +170,12 @@ class DebateViewModel: ObservableObject {
             }
         }
     }
-    
+
     private func buildConversationHistory(affMessages: [ChatMessage], oppMessages: [ChatMessage], isAffirmative: Bool) -> [ChatMessage] {
         var history: [ChatMessage] = []
-        
+
         let maxCount = max(affMessages.count, oppMessages.count)
-        
+
         for i in 0..<maxCount {
             if isAffirmative {
                 if i < oppMessages.count {
@@ -185,10 +193,10 @@ class DebateViewModel: ObservableObject {
                 }
             }
         }
-        
+
         return history
     }
-    
+
     private func generateResponse(
         model: AIModel,
         systemPrompt: String,
@@ -198,18 +206,17 @@ class DebateViewModel: ObservableObject {
         completion: @escaping (String) -> Void
     ) async {
         let apiKey = getAPIKey(for: model)
-        
+
         guard !apiKey.isEmpty else {
-            addMessage(speaker: speaker, content: "❌ API key not configured for \(model.name)", isSystem: false)
+            addMessage(speaker: speaker, content: " ❌ API key not configured for \(model.name)", isSystem: false)
             return
         }
-        
-        // Add empty message that will be updated
+
         let messageIndex = messages.count
         addMessage(speaker: speaker, content: "", isSystem: false)
-        
+
         var fullResponse = ""
-        
+
         do {
             let stream = try await aiService.generateResponse(
                 model: model,
@@ -217,11 +224,10 @@ class DebateViewModel: ObservableObject {
                 messages: conversationHistory,
                 apiKey: apiKey
             )
-            
+
             for try await token in stream {
                 fullResponse += token
-                
-                // Update the message in real-time
+
                 if messageIndex < messages.count {
                     messages[messageIndex] = DebateMessage(
                         speaker: speaker,
@@ -231,11 +237,11 @@ class DebateViewModel: ObservableObject {
                     )
                 }
             }
-            
+
             completion(fullResponse)
-            
+
         } catch {
-            let errorMessage = "❌ Error: \(error.localizedDescription)"
+            let errorMessage = " ❌ Error: \(error.localizedDescription)"
             if messageIndex < messages.count {
                 messages[messageIndex] = DebateMessage(
                     speaker: speaker,
@@ -246,7 +252,7 @@ class DebateViewModel: ObservableObject {
             }
         }
     }
-    
+
     private func addMessage(speaker: String?, content: String, isSystem: Bool) {
         let message = DebateMessage(
             speaker: speaker,
@@ -256,36 +262,36 @@ class DebateViewModel: ObservableObject {
         )
         messages.append(message)
     }
-    
+
     func speakMessage(_ message: DebateMessage) {
         isConvertingSpeech = true
         Task {
             do {
-                try await ttsService.speak(text: message.message, apiKey: openAIKey)
+                try await ttsService.speak(text: message.message, voice: selectedVoice, apiKey: openAIKey)
             } catch {
                 print("TTS error: \(error.localizedDescription)")
             }
             await MainActor.run { self.isConvertingSpeech = false }
         }
     }
-    
+
     func exportDebate() -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
-        
+
         var export = "# Debate on: \(topic)\n"
         export += "> Generated on: \(formatter.string(from: Date()))\n\n"
         export += "---\n\n"
-        
+
         for message in messages {
             if let speaker = message.speaker {
-                export += "**🗣️ \(speaker):**\n\n\(message.message)\n\n---\n\n"
+                export += "** 🗣️ \(speaker):**\n\n\(message.message)\n\n---\n\n"
             } else {
                 export += "*\(message.message)*\n\n---\n\n"
             }
         }
-        
+
         return export
     }
 }
