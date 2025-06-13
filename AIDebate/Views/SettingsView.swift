@@ -7,6 +7,26 @@ struct SettingsView: View {
     var body: some View {
         NavigationView {
             Form {
+                // Voice Selection Section
+                Section(header: Text("Voice Selection (OpenAI TTS)")) {
+                    Picker("Voice", selection: $viewModel.selectedVoice) {
+                        ForEach(viewModel.availableVoices, id: \.self) { voice in
+                            Text(voice.capitalized).tag(voice)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                }
+
+                // Language Selection Section
+                Section(header: Text("Debate Language")) {
+                    Picker("Language", selection: $viewModel.selectedLanguage) {
+                        ForEach(viewModel.availableLanguages, id: \.self) { language in
+                            Text(language).tag(language)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                }
+
                 Section(header: Text("API Keys")) {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("OpenAI API Key")
@@ -37,26 +57,6 @@ struct SettingsView: View {
                             .font(.headline)
                         SecureField("Enter Groq API Key", text: $viewModel.groqKey)
                     }
-                }
-
-                // Voice Selection Section
-                Section(header: Text("Voice Selection (OpenAI TTS)")) {
-                    Picker("Voice", selection: $viewModel.selectedVoice) {
-                        ForEach(viewModel.availableVoices, id: \.self) { voice in
-                            Text(voice.capitalized).tag(voice)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                }
-
-                // Language Selection Section
-                Section(header: Text("Debate Language")) {
-                    Picker("Language", selection: $viewModel.selectedLanguage) {
-                        ForEach(viewModel.availableLanguages, id: \.self) { language in
-                            Text(language).tag(language)
-                        }
-                    }
-                    .pickerStyle(.menu)
                 }
 
                 Section(header: Text("Information")) {

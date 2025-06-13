@@ -11,6 +11,7 @@ class DebateViewModel: ObservableObject {
     @Published var isDebating = false
     @Published var isResearching = false
     @Published var isConvertingSpeech = false
+    @Published var pastDebates: [DebateRecord] = []
 
     // API Keys
     @Published var openAIKey = ""
@@ -26,7 +27,8 @@ class DebateViewModel: ObservableObject {
     private let aiService: AIServiceProtocol
     private let researchService: ResearchService
     private let ttsService = TextToSpeechService()
-
+    private let storage = DebateStorageService()
+    
     // Lists for UI Pickers
     let availableVoices = ["alloy", "ash", "ballad", "coral", "echo", "fable", "nova", "onyx", "sage", "shimmer"]
     let availableLanguages = ["English", "Spanish", "French", "German", "Italian", "Japanese", "Chinese", "Korean", "Portuguese"]
@@ -35,8 +37,10 @@ class DebateViewModel: ObservableObject {
         AIModel(name: "GPT-4o-mini", modelId: "gpt-4o-mini", type: .openai, baseURL: "https://api.openai.com"),
         AIModel(name: "Deepseek-Chat", modelId: "deepseek-chat", type: .deepseek, baseURL: "https://api.deepseek.com"),
         AIModel(name: "Claude 3.7 Sonnet", modelId: "claude-3-7-sonnet-latest", type: .claude, baseURL: nil),
+        AIModel(name: "Claude 4.0 Sonnet", modelId: "claude-sonnet-4-0", type: .claude, baseURL: nil),
         AIModel(name: "Gemini-2.0-Flash", modelId: "gemini-2.0-flash", type: .gemini, baseURL: nil),
         AIModel(name: "Llama-3.3-70b-versatile (Groq)", modelId: "llama-3.3-70b-versatile", type: .groq, baseURL: "https://api.groq.com/openai"),
+        AIModel(name: "GPT-4.1-mini", modelId: "gpt-4.1-mini", type: .openai, baseURL: "https://api.openai.com"),
         AIModel(name: "GPT-4o", modelId: "gpt-4o", type: .openai, baseURL: "https://api.openai.com")
     ]
 
@@ -48,6 +52,7 @@ class DebateViewModel: ObservableObject {
         self.aiService = aiService
         self.researchService = researchService
         loadSettings()
+        loadPastDebates()
     }
 
     private func loadSettings() {
@@ -115,6 +120,8 @@ class DebateViewModel: ObservableObject {
 
         isDebating = false
         addMessage(speaker: nil, content: " 🏁 Debate finished.", isSystem: true)
+        storage.saveDebate(topic: topic, messages: messages)
+        loadPastDebates()
     }
 
     private func conductDebate(research: ResearchBriefing) async {
@@ -293,5 +300,19 @@ class DebateViewModel: ObservableObject {
         }
 
         return export
+    }
+    
+    func loadPastDebates() {
+        pastDebates = storage.fetchDebates()
+    }
+
+    func deleteDebate(_ debate: DebateRecord) {
+        storage.deleteDebate(debate)
+        loadPastDebates()
+    }
+
+    func openDebate(_ debate: DebateRecord) {
+        topic = debate.topic
+        messages = debate.messages.map { $0.toDebateMessage() }
     }
 }

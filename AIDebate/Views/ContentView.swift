@@ -9,7 +9,8 @@ struct ContentView: View {
     @StateObject private var viewModel = DebateViewModel()
     @State private var showingSettings = false
     @State private var showingDebate = false
-    
+    @State private var showingHistory = false
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -73,13 +74,18 @@ struct ContentView: View {
                     }
                 }
                 
+//                ToolbarItem(placement: .topBarTrailing) {
+//                    Button("开始") {
+//                        hideKeyboard()
+//                        showingDebate = true
+//                    }
+//                    .disabled(!viewModel.canStart)
+//                    .foregroundStyle(viewModel.canStart ? .blue : .secondary)
+//                }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("开始") {
-                        hideKeyboard()
-                        showingDebate = true
+                    Button(action: { showingHistory = true }) {
+                        Image(systemName: "clock.arrow.circlepath")
                     }
-                    .disabled(!viewModel.canStart)
-                    .foregroundStyle(viewModel.canStart ? .blue : .secondary)
                 }
             }
             .onTapGesture {
@@ -91,6 +97,9 @@ struct ContentView: View {
         }
         .fullScreenCover(isPresented: $showingDebate) {
             DebateView(viewModel: viewModel)
+        }
+        .sheet(isPresented: $showingHistory) {
+            PastDebatesView(viewModel: viewModel)
         }
     }
 }
