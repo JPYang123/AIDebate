@@ -74,13 +74,21 @@ class AIService: AIServiceProtocol {
         var allMessages = [ChatMessage(role: "system", content: systemPrompt)]
         allMessages.append(contentsOf: messages)
         
-        let body = [
+        var body = [
             "model": model.modelId,
             "messages": allMessages.map { ["role": $0.role, "content": $0.content] },
-            "stream": true,
-            "max_tokens": 1500
+            "stream": true
         ] as [String: Any]
         
+        if model.type == .openai {
+            // Preserve fast, visible text output without a hidden reasoning budget.
+            body["reasoning_effort"] = "none"
+            body["max_completion_tokens"] = 1500
+        } else {
+            // DeepSeek and Groq retain their existing request contract.
+            body["max_tokens"] = 1500
+        }
+
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
         let (data, response) = try await URLSession.shared.bytes(for: request)
