@@ -34,14 +34,13 @@ class DebateViewModel: ObservableObject {
     let availableLanguages = ["English", "Spanish", "French", "German", "Italian", "Japanese", "Chinese", "Korean", "Portuguese"]
 
     let availableModels: [AIModel] = [
-        AIModel(name: "GPT-4o-mini", modelId: "gpt-4o-mini", type: .openai, baseURL: "https://api.openai.com"),
+        AIModel(name: "GPT-6 Luna", modelId: "gpt-6-luna", type: .openai, baseURL: "https://api.openai.com"),
         AIModel(name: "Deepseek-Chat", modelId: "deepseek-chat", type: .deepseek, baseURL: "https://api.deepseek.com"),
         AIModel(name: "Claude 3.7 Sonnet", modelId: "claude-3-7-sonnet-latest", type: .claude, baseURL: nil),
         AIModel(name: "Claude 4.0 Sonnet", modelId: "claude-sonnet-4-0", type: .claude, baseURL: nil),
         AIModel(name: "Gemini-2.0-Flash", modelId: "gemini-2.0-flash", type: .gemini, baseURL: nil),
         AIModel(name: "Llama-3.3-70b-versatile (Groq)", modelId: "llama-3.3-70b-versatile", type: .groq, baseURL: "https://api.groq.com/openai"),
-        AIModel(name: "GPT-4.1-mini", modelId: "gpt-4.1-mini", type: .openai, baseURL: "https://api.openai.com"),
-        AIModel(name: "GPT-4o", modelId: "gpt-4o", type: .openai, baseURL: "https://api.openai.com")
+        AIModel(name: "GPT-6 Sol", modelId: "gpt-6-sol", type: .openai, baseURL: "https://api.openai.com")
     ]
 
     var availableModelNames: [String] {
